@@ -39,17 +39,3 @@ export interface RepoAnalysis {
   onboarding: string[];
   confidence: 'Low' | 'Medium' | 'High';
 }
-
-export const MOCK_ANALYSIS: RepoAnalysis = {
-  summary: "A distributed system for autonomous agent orchestration.",
-  file_tree: ["src/core/agent.ts", "src/network/p2p.ts", "config/protocol.json"],
-  languages: ["TypeScript", "Rust"],
-  architecture: "Micro-kernel architecture with plugin-based capabilities.",
-  modules: [
-    { name: "Core", responsibility: "Lifecycle management" },
-    { name: "Network", responsibility: "P2P discovery" }
-  ],
-  risks: [{ title: "Complexity", description: "High cognitive load", severity: "Medium" }],
-  onboarding: ["Run npm install", "Start docker"],
-  confidence: "Medium"
-};

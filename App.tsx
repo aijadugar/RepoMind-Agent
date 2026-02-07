@@ -12,13 +12,18 @@ const INITIAL_LOG: LogEntry = {
   message: 'RepoMind Agent initialized. Awaiting target coordinates.',
   type: 'system'
 };
+type Log = {
+  type: 'info' | 'error' | 'success';
+  message: string;
+};
+
 
 const App: React.FC = () => {
   const [repoUrl, setRepoUrl] = useState('');
   const [stage, setStage] = useState<AnalysisStage>(AnalysisStage.IDLE);
   const [logs, setLogs] = useState<LogEntry[]>([INITIAL_LOG]);
   const [report, setReport] = useState<RepoAnalysis | null>(null);
-  
+
   // Ref to hold the raw URL for internal processing without re-renders
   const processingUrlRef = useRef('');
 
@@ -33,10 +38,50 @@ const App: React.FC = () => {
   }, []);
 
   const handleSimulatedDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  function validateGitHubRepoUrl(url: string): { valid: boolean; message?: string } {
+    try {
+      const parsed = new URL(url);
+
+      if (parsed.hostname !== 'github.com') {
+        return { valid: false, message: 'Only GitHub URLs are supported' };
+      }
+
+      const parts = parsed.pathname.split('/').filter(Boolean);
+
+      // github.com/username
+      if (parts.length === 1) {
+        return {
+          valid: false,
+          message: 'Entered URL is a GitHub profile. Please enter a repository URL.',
+        };
+      }
+
+      // github.com/username/repo
+      if (parts.length >= 2) {
+        return { valid: true };
+      }
+
+      return { valid: false, message: 'Invalid GitHub URL format' };
+    } catch {
+      return { valid: false, message: 'Invalid URL' };
+    }
+  }
 
   const runAnalysis = async () => {
     if (!repoUrl.trim()) return;
     if (stage !== AnalysisStage.IDLE && stage !== AnalysisStage.COMPLETE && stage !== AnalysisStage.ERROR) return;
+
+    const validation = validateGitHubRepoUrl(repoUrl);
+    if (!validation.valid) {
+      addLog(validation.message!, 'error');
+      return;
+    }
+
+    setLogs([]);
+    if (!validation.valid) {
+      addLog(validation.message ?? 'Invalid repository URL', 'error');
+      return;
+    }
 
     processingUrlRef.current = repoUrl;
     setStage(AnalysisStage.PLANNING);
@@ -46,19 +91,20 @@ const App: React.FC = () => {
     addLog('Initiating Deep Analysis Protocol...', 'system');
 
     try {
+
       // --- STAGE: PLANNING ---
       await handleSimulatedDelay(1000);
       addLog('Parsing repository metadata...', 'info', 'TOOL:INGEST_REPO');
       addLog(`Identified host: GitHub`, 'info');
       addLog(`Protocol: HTTPS`, 'info');
-      
+
       // --- STAGE: INGESTING ---
       setStage(AnalysisStage.INGESTING);
       await handleSimulatedDelay(1200);
       addLog('Cloning virtual reference...', 'info', 'TOOL:INGEST_REPO');
       addLog('Indexing file tree structure...', 'info');
       addLog('Detecting primary languages...', 'info');
-      
+
       // --- STAGE: ANALYZING ---
       setStage(AnalysisStage.ANALYZING);
       addLog('Building Abstract Syntax Trees (AST)...', 'info', 'TOOL:ANALYZE');
@@ -70,18 +116,18 @@ const App: React.FC = () => {
       // --- STAGE: GENERATING (The real AI call) ---
       setStage(AnalysisStage.GENERATING);
       addLog('Synthesizing intelligence artifacts...', 'system', 'TOOL:GENERATE_ARTIFACTS');
-      
+
       // Trigger Gemini
       const result = await analyzeRepository(processingUrlRef.current);
-      
+
       addLog('Artifacts generated successfully.', 'success');
-      
+
       // --- STAGE: VERIFYING ---
       setStage(AnalysisStage.VERIFYING);
       addLog('Cross-referencing conclusions...', 'info', 'TOOL:SELF_VERIFY');
       await handleSimulatedDelay(1500);
       addLog(`Confidence Score: ${result.confidence}`, 'info');
-      
+
       if (result.confidence === 'Low') {
         addLog('Confidence low. Re-evaluating critical paths...', 'warning');
         await handleSimulatedDelay(1000);
@@ -92,7 +138,7 @@ const App: React.FC = () => {
       addLog('Formatting final output report...', 'info');
       setReport(result);
       await handleSimulatedDelay(800);
-      
+
       setStage(AnalysisStage.COMPLETE);
       addLog('Mission Complete. Report Rendered.', 'success');
 
@@ -109,7 +155,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-gray-200 font-sans selection:bg-cyber-accent selection:text-black">
-      
+
       {/* Top Bar */}
       <header className="h-16 border-b border-cyber-800 bg-cyber-900/80 backdrop-blur-md fixed top-0 w-full z-50 flex items-center justify-between px-6">
         <div className="flex items-center space-x-3">
@@ -123,21 +169,20 @@ const App: React.FC = () => {
             <div className={`w-2 h-2 rounded-full mr-2 ${stage === AnalysisStage.IDLE || stage === AnalysisStage.COMPLETE ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></div>
             STATUS: {stage}
           </div>
-          <div className="hidden md:block">SYS.LOAD: 12%</div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="pt-24 pb-12 px-4 max-w-7xl mx-auto space-y-8">
-        
+
         {/* Input Section */}
         <section className="max-w-3xl mx-auto w-full">
-           <div className="relative group">
+          <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-cyber-accent to-cyber-danger rounded-lg blur opacity-30 group-hover:opacity-60 transition duration-1000"></div>
             <div className="relative flex items-center bg-cyber-900 rounded-lg p-2 border border-cyber-700">
               <Search className="w-5 h-5 text-gray-400 ml-3" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -145,7 +190,7 @@ const App: React.FC = () => {
                 className="w-full bg-transparent border-none focus:ring-0 text-white font-mono px-4 py-2 placeholder-gray-600"
                 disabled={stage !== AnalysisStage.IDLE && stage !== AnalysisStage.COMPLETE && stage !== AnalysisStage.ERROR}
               />
-              <button 
+              <button
                 onClick={runAnalysis}
                 disabled={stage !== AnalysisStage.IDLE && stage !== AnalysisStage.COMPLETE && stage !== AnalysisStage.ERROR}
                 className="px-6 py-2 bg-cyber-800 hover:bg-cyber-700 text-cyber-accent border border-cyber-700 rounded font-mono text-sm uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -153,36 +198,37 @@ const App: React.FC = () => {
                 Engage
               </button>
             </div>
-           </div>
+          </div>
         </section>
 
         {/* Pipeline Visualizer */}
-        <section className="w-full">
-          <Pipeline currentStage={stage} />
+        <section className="w-full md:pl-8 lg:pl-20 flex justify-center">
+          <div className="max-w-4xl w-full">
+            <Pipeline currentStage={stage} />
+          </div>
         </section>
 
-        {/* Split View: Terminal & Report */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[600px] lg:h-[700px]">
-          
-          {/* Left: Terminal Log */}
-          <div className={`lg:col-span-4 h-full transition-all duration-500 ${report ? 'lg:col-span-4' : 'lg:col-span-12'}`}>
-            <div className="h-full flex flex-col">
-              <div className="flex items-center justify-between mb-2 px-1">
-                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center">
-                   <Activity className="w-3 h-3 mr-1" /> Operation Logs
-                 </h3>
-              </div>
-              <Terminal logs={logs} />
-            </div>
-          </div>
 
-          {/* Right: Report View (Appears only when done) */}
-          {report && (
-            <div className="lg:col-span-8 h-full overflow-y-auto pr-2 scrollbar-thin animate-fade-in-right">
-               <Report data={report} />
+
+        {/* Terminal Section */}
+        <section className="w-full h-[600px] lg:h-[700px]">
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center">
+                <Activity className="w-3 h-3 mr-1" /> Operation Logs
+              </h3>
             </div>
-          )}
-        </div>
+            <Terminal logs={logs} />
+          </div>
+        </section>
+
+        {/* Report Section (Appears only when done) */}
+        {report && (
+          <section className="w-full animate-fade-in-up">
+            <Report data={report} />
+          </section>
+        )}
+
 
       </main>
     </div>
