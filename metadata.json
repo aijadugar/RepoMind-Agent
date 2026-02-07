@@ -1,0 +1,5 @@
+{
+  "name": "RepoMind-Agent",
+  "description": "An autonomous codebase intelligence system that analyzes software repositories to produce deep architectural insights and risk assessments.",
+  "requestFramePermissions": []
+}
